@@ -1,0 +1,9 @@
+#If enabled, the craft guide will track what the player finds and display
+#only those things.
+craft_lookup_progressive (Progressive Mode) bool false
+
+#If enabled, Craft Lookup will disable error tolerance and show
+#technical names.
+craft_lookup_debug_mode (Debug Mode) bool false
+
+
