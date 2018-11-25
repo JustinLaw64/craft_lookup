@@ -58,31 +58,31 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 	local r = ""
 	local is_empty = false
 	if stack_param ~= nil and stack_param ~= "" then
-		local stack = (type(stack_param) == "string") and ItemStack(stack_param) or stack_param
+		local stack = type(stack_param) == "string" and ItemStack(stack_param) or stack_param
 		local stackname = stack:get_name()
 		if stack:get_count() > 0 then
 			local is_group, groupname = mod.is_group(stackname)
 			local imagename, special_text, can_be_seen
 			if not is_group then
-				can_be_seen = (not mod.progressive or mod.is_visible_to(context, stackname))
+				can_be_seen = mod.is_visible_to(context, stackname)
 				special_text = ""
 				
 				if can_be_seen then
 					-- Scan for recipes which lead up to unknown items.
 					local itemdef = mod.database.items[stackname]
 					local unknown_recipe_count = 0
-					if itemdef ~= nil then
+					if itemdef ~= nil and mod.progressive then
 						for i,recipe in ipairs(itemdef.recipes_ingredient) do
 							if recipe.output ~= nil and recipe.output ~= "" then
 								local outputname = ItemStack(recipe.output):get_name()
-								if not (mod.is_group(outputname) or mod.is_visible_to(context, outputname)) then
+								if not mod.is_group(outputname) and not mod.is_visible_to(context, outputname) then
 									unknown_recipe_count = unknown_recipe_count + 1
 								end
 							end
 						end
 					end
 					if unknown_recipe_count > 0 then
-						special_text = minetest.colorize("#FFFF00", "\\[".."*"..tostring(unknown_recipe_count).."\\]")
+						special_text = minetest.colorize("#FFFF00", string.format("\\[*%i\\]", unknown_recipe_count))
 					end
 					
 					-- Set tile image
@@ -109,9 +109,11 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 			if stack:get_count() > 1 then
 				r = r..string.format("label[%f,%f;%i]", pos_x + 0.6, pos_y + 0.69, stack:get_count())
 			end
-		else is_empty = true
+		else
+			is_empty = true
 		end
-	else is_empty = true
+	else
+		is_empty = true
 	end
 	if is_empty then
 		r = string.format("item_image_button[%f,%f;1,1;;itemtile_blank;]", pos_x, pos_y)
