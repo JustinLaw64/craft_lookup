@@ -203,9 +203,9 @@ function mod.filterby_searchtype(deflist, searchtype, playercontext)
 			local list = mod.to_named_deflist(deflist)
 			local player = minetest.get_player_by_name(playercontext.playername)
 			local playerinv = player:get_inventory()
-			for i,v in ipairs(playerinv:get_list("main")) do
+			for i, v in ipairs(playerinv:get_list("main")) do
 				if v ~= nil and v:get_count() > 0 and list[v:get_name()] ~= nil then
-					table.insert(r,list[v:get_name()])
+					table.insert(r, list[v:get_name()])
 				end
 			end
 		else
@@ -232,6 +232,9 @@ function mod.to_indexed_deflist(deflist)
 	for k, v in pairs(deflist) do
 		table.insert(r, v)
 	end
+	table.sort(r, function(defa, defb)
+		return defa.name < defb.name
+	end)
 	return r
 end
 function mod.to_named_deflist(deflist)
