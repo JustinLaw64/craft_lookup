@@ -4,24 +4,16 @@
 local mod, private = ...
 local tablelib = private.tablelib
 
--- GUI
-local gui_search_list_dimenions = {x = 8, y = 4}
-local gui_search_list_count = gui_search_list_dimenions.x * gui_search_list_dimenions.y
-local gui_search_typedescriptions = {"All","Nodes","Tools","Craft Items","Inventory",}
-local gui_search_typedescriptions_reverse = tablelib.inverse(gui_search_typedescriptions)
-
 function mod.set_search_filter(searchterm, searchtype, playercontext, bust_cache)
 	local searchterm_old = playercontext.gui_list_search_term
 	local searchtype_old = playercontext.gui_list_search_type
-	local r
 	if searchterm ~= searchterm_old or searchtype ~= searchtype_old or bust_cache then
 		playercontext.gui_list_search_term = searchterm
 		playercontext.gui_list_search_type = searchtype
-		r = mod.get_search_filtered(playercontext, true)
+		return mod.get_search_filtered(playercontext, true)
 	else
-		r = gui_list_search_cache
+		return gui_list_search_cache
 	end
-	return r
 end
 function mod.get_search_filtered(playercontext, bust_cache)
 	local r
@@ -32,7 +24,9 @@ function mod.get_search_filtered(playercontext, bust_cache)
 		r = mod.filterby_searchtype(r, searchtype, playercontext)
 		r = mod.filterby_searchterm(r, searchterm)
 		r = mod.to_indexed_deflist(r)
-		table.sort(r, function(a,b) return a.name < b.name end)
+		table.sort(r, function(a,b)
+			return a.name < b.name
+		end)
 		mod.bust_search_filter_cache(playercontext)
 		playercontext.gui_list_search_cache = r
 		playercontext.gui_list_page = mod.gui_constrain_page(playercontext.gui_list_page, playercontext)
@@ -47,8 +41,7 @@ end
 function mod.get_page_count(playercontext)
 	local deflist = mod.get_search_filtered(playercontext)
 	local itemcount = deflist ~= nil and #deflist or 0
-	local r = math.max(1, math.floor((itemcount - 1) / gui_search_list_count) + 1)
-	return r
+	return math.max(1, math.ceil(itemcount / mod.gui_search_list_count))
 end
 function mod.gui_constrain_page(index, playercontext)
 	return math.max(1, math.min(index, mod.get_page_count(playercontext)))
@@ -56,7 +49,7 @@ end
 
 function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 	local r = ""
-	local is_empty = false
+	local is_empty = true
 	if stack_param ~= nil and stack_param ~= "" then
 		local stack = type(stack_param) == "string" and ItemStack(stack_param) or stack_param
 		local stackname = stack:get_name()
@@ -71,7 +64,7 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 					-- Scan for recipes which lead up to unknown items.
 					local itemdef = mod.database.items[stackname]
 					local unknown_recipe_count = 0
-					if itemdef ~= nil and mod.progressive then
+					if mod.progressive_mode and itemdef ~= nil then
 						for i,recipe in ipairs(itemdef.recipes_ingredient) do
 							if recipe.output ~= nil and recipe.output ~= "" then
 								local outputname = ItemStack(recipe.output):get_name()
@@ -109,11 +102,9 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 			if stack:get_count() > 1 then
 				r = r..string.format("label[%f,%f;%i]", pos_x + 0.6, pos_y + 0.69, stack:get_count())
 			end
-		else
-			is_empty = true
+			
+			is_empty = false
 		end
-	else
-		is_empty = true
 	end
 	if is_empty then
 		r = string.format("item_image_button[%f,%f;1,1;;itemtile_blank;]", pos_x, pos_y)
@@ -214,8 +205,8 @@ function mod.gui_recipe_type_label(recipe)
 	return r1, r2
 end
 
--- sfinv page
-sfinv.register_page("craft_lookup:page", { -- The "context"s mentioned here are not the type this mod uses.
+-- sfinv page -- The "context"s mentioned here are not the type this mod uses.
+sfinv.register_page("craft_lookup:page", {
 	title = "Craft Lookup",
 	get = function(self, player, context)
 		local playercontext = mod.contexts[player:get_player_name()]
@@ -253,19 +244,21 @@ sfinv.register_page("craft_lookup:page", { -- The "context"s mentioned here are 
 		-- Catalog
 		local deflist = mod.get_search_filtered(playercontext)
 		local pagenumber = playercontext.gui_list_page
-		local pageoffset = (pagenumber - 1) * gui_search_list_count
+		local pageoffset = (pagenumber - 1) * mod.gui_search_list_count
 		table.insert(
 			formspec_table,
 			mod.gui_item_grid(
-				0, 3.9,
-				gui_search_list_dimenions.x,
-				gui_search_list_dimenions.y,
-				deflist, pageoffset,
+				0,
+				3.9,
+				mod.gui_search_list_dimensions.x,
+				mod.gui_search_list_dimensions.y,
+				deflist,
+				pageoffset,
 				playercontext
 			)
 		)
 		-- Catalog Navigation
-		table.insert(formspec_table, string.format("dropdown[0,8.1;2,1;search_type_dropdown;%s;%i]", table.concat(gui_search_typedescriptions, ","), playercontext.gui_list_search_type))
+		table.insert(formspec_table, string.format("dropdown[0,8.1;2,1;search_type_dropdown;%s;%i]", table.concat(mod.gui_search_typedescriptions, ","), playercontext.gui_list_search_type))
 		table.insert(formspec_table, "field[2.2,8.3;2.7,1;search_text;Search:;"..playercontext.gui_list_search_term.."]")
 		table.insert(formspec_table, "image_button[4.5,7.9;1,1;craft_lookup_search.png;search_button;]")
 		table.insert(formspec_table, "tooltip[search_button;Search / Refresh]")
@@ -281,10 +274,12 @@ sfinv.register_page("craft_lookup:page", { -- The "context"s mentioned here are 
 		mod.bust_search_filter_cache(playercontext)
 	end,
 	on_player_receive_fields = function(self, player, context, fields)
-		local RefreshWarranted = true
-		local playercontext = mod.contexts[player:get_player_name()]
-		local function error_protected_function(...)
+		local function error_protected_method()
+			local refreshneeded = true
+			local playercontext = mod.contexts[player:get_player_name()]
+			
 			--private.print(playercontext.playername, dump(fields))
+			
 			if fields.recipe_prev ~= nil then
 				playercontext.gui_recipe_page = playercontext.gui_recipe_page - 1
 			elseif fields.recipe_next ~= nil then
@@ -295,13 +290,13 @@ sfinv.register_page("craft_lookup:page", { -- The "context"s mentioned here are 
 				playercontext.gui_list_page = mod.gui_constrain_page(playercontext.gui_list_page + 1, playercontext)
 			elseif fields.search_button ~= nil or fields.key_enter_field == "search_text" then
 				if fields.search_type_dropdown ~= nil and fields.search_text ~= nil then
-					local searchtype = gui_search_typedescriptions_reverse[fields.search_type_dropdown]
+					local searchtype = mod.gui_search_typedescriptions_reverse[fields.search_type_dropdown]
 					if searchtype ~= nil then
 						mod.set_search_filter(fields.search_text or "", searchtype, playercontext, true)
 					end
 				end
 			else
-				RefreshWarranted = false
+				refreshneeded = false
 				
 				for k,v in pairs(fields) do
 					if string.sub(k,1,9) == "itemtile_" and k ~= "itemtile_blank" and k ~= "itemtile_unknown" then
@@ -319,7 +314,7 @@ sfinv.register_page("craft_lookup:page", { -- The "context"s mentioned here are 
 								else
 									mod.set_search_filter(itemname, 1, playercontext, true)
 								end
-								RefreshWarranted = true
+								refreshneeded = true
 								--private.print(playercontext.playername, itemname)
 								break
 							else
@@ -332,15 +327,15 @@ sfinv.register_page("craft_lookup:page", { -- The "context"s mentioned here are 
 				end
 			end
 			
-			if RefreshWarranted then
+			if refreshneeded then
 				sfinv.set_player_inventory_formspec(player)
 			end
 		end
 		if mod.debug_mode then -- Calls the function body defined above.
-			error_protected_function()
+			error_protected_method()
 		else
-			local r, errormsg = pcall(error_protected_function)
-			if errormsg ~= nil then
+			local r, errormsg = pcall(error_protected_method)
+			if r and errormsg ~= nil then
 				private.print(playercontext.playername, errormsg)
 			end
 		end

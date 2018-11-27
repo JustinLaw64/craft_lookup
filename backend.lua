@@ -135,7 +135,7 @@ function mod.is_group(itemstring)
 	return r, r2
 end
 function mod.is_visible_to(playercontext, itemname)
-	return not mod.progressive or mod.discovery.knows(playercontext.playername, itemname)
+	return not mod.progressive_mode or mod.discovery.knows(playercontext.playername, itemname)
 end
 
 -- List Processing

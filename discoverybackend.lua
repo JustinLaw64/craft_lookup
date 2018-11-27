@@ -7,19 +7,15 @@ local tablelib = private.tablelib
 local discovery = {}
 mod.discovery = discovery
 
-discovery.version = 0
-discovery.loop_interval = 120
-discovery.datafile = minetest.get_worldpath().."/craft_lookup_discovery"
-
 discovery.database = nil -- format is {version = version, players = {<player> = {items = {}}}}
-discovery.loop_started = false
+discovery.loops_started = false
 
 function discovery.get_database()
 	local r
 	if discovery.database ~= nil then
 		r = discovery.database
 	else
-		local filehandle = io.open(discovery.datafile, "r")
+		local filehandle = io.open(mod.discovery_datafilepath, "r")
 		if filehandle ~= nil then
 			local filecontents = filehandle:read()
 			filehandle:close()
@@ -27,7 +23,7 @@ function discovery.get_database()
 			print("[craft_lookup] Loaded Discovery database.")
 		else
 			r = {
-				version = discovery.version,
+				version = mod.discovery_version,
 				players = {},
 			}
 		end
@@ -37,7 +33,7 @@ function discovery.get_database()
 end
 function discovery.save_database()
 	if discovery.database ~= nil then
-		local filehandle = io.open(discovery.datafile,"w")
+		local filehandle = io.open(mod.discovery_datafilepath,"w")
 		if filehandle ~= nil then
 			filehandle:write(minetest.serialize(discovery.database))
 			filehandle:close()
@@ -47,10 +43,9 @@ function discovery.save_database()
 		end
 	end
 end
-
 function discovery.knows(playername, itemname)
 	local database = discovery.get_database()
-	return not mod.progressive or database.players[playername].items[itemname] ~= nil
+	return not mod.progressive_mode or database.players[playername].items[itemname] ~= nil
 end
 function discovery.discover(playername, itemname)
 	if discovery.discoverable(itemname) then
@@ -59,7 +54,7 @@ function discovery.discover(playername, itemname)
 		local oldvalue = discovereditems[itemname]
 		if oldvalue ~= true then
 			discovereditems[itemname] = true
-			private.print(playername, "You discovered "..(minetest.registered_items[itemname].description or itemname).."!")
+			private.print(playername, string.format("You discovered %s!", minetest.registered_items[itemname].description or itemname))
 		end
 	end
 end
@@ -67,13 +62,17 @@ function discovery.forget(playername, itemname)
 	local database = discovery.get_database()
 	database.players[playername].items[itemname] = nil
 end
+function discovery.discoverable(itemname)
+	return mod.database.items[itemname] ~= nil
+end
 function discovery.loop_start()
-	if not discovery.loop_started then
-		minetest.after(1, discovery.loop)
-		discovery.loop_started = true
+	if not discovery.loops_started then
+		minetest.after(mod.discovery_check_interval, discovery.checkloop)
+		minetest.after(mod.discovery_save_interval, discovery.saveloop)
+		discovery.loops_started = true
 	end
 end
-function discovery.loop(...)
+function discovery.checkloop()
 	local database = discovery.get_database()
 	for playername, playerdata in pairs(database.players) do
 		local player = minetest.get_player_by_name(playername)
@@ -88,13 +87,12 @@ function discovery.loop(...)
 		end
 	end
 	
-	discovery.save_database()
-	
-	minetest.after(discovery.loop_interval, discovery.loop)
+	minetest.after(mod.discovery_check_interval, discovery.checkloop)
 end
-
-function discovery.discoverable(itemname)
-	return mod.database.items[itemname] ~= nil
+function discovery.saveloop()
+	local database = discovery.get_database()
+	discovery.save_database()
+	minetest.after(mod.discovery_save_interval, discovery.saveloop)
 end
 
 minetest.register_on_punchnode(function(pos, node, puncher, pointed_thing)
