@@ -245,33 +245,26 @@ function mod.to_named_deflist(deflist)
 	return r
 end
 
--- Events
 minetest.register_on_joinplayer(function(player)
+	-- Ensures the craft database is created before a player does anything.
+	mod.catalog_items()
+	
+	-- Set up an environment specific to the player.
 	local playername = player:get_player_name()
-	if mod.contexts[playername] == nil then
-		mod.contexts[playername] = {
-			playername = playername,
-			known_items = {}, -- Item name is key and boolean is value
-			gui_list_search_term = "",
-			gui_list_search_type = 1,
-			gui_list_search_cache = nil, -- Indexed
-			gui_list_page = 1,
-			gui_recipe_item = nil,
-			gui_recipe_page = 1,
-			gui_recipe_mode = 1, -- 1 = As output, 2 = As ingredient
-		}
-		
-		-- Ensures the craft database is created before a player does anything.
-		if mod.database == nil then
-			mod.catalog_items()
-		end
-	end
+	mod.contexts[playername] = {
+		playername = playername,
+		known_items = {}, -- Item name is key and boolean is value
+		gui_list_search_term = "",
+		gui_list_search_type = 1,
+		gui_list_search_cache = nil, -- Indexed
+		gui_list_page = 1,
+		gui_recipe_item = nil,
+		gui_recipe_page = 1,
+		gui_recipe_mode = 1, -- 1 = As output, 2 = As ingredient
+	}
 end)
 minetest.register_on_leaveplayer(function(player)
-	local playername = player:get_player_name()
-	if mod.contexts[playername] ~= nil then
-		mod.contexts[playername] = nil
-	end
+	mod.contexts[player:get_player_name()] = nil
 end)
 minetest.after(0.01, function()
 	mod.catalog_items()

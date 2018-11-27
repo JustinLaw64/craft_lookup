@@ -47,7 +47,7 @@ function mod.gui_constrain_page(index, playercontext)
 	return math.max(1, math.min(index, mod.get_page_count(playercontext)))
 end
 
-function mod.get_item_tile(pos_x, pos_y, stack_param, context)
+function mod.get_item_tile(pos_x, pos_y, stack_param, playercontext)
 	local r = ""
 	local is_empty = true
 	if stack_param ~= nil and stack_param ~= "" then
@@ -57,7 +57,7 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 			local is_group, groupname = mod.is_group(stackname)
 			local imagename, special_text, can_be_seen
 			if not is_group then
-				can_be_seen = mod.is_visible_to(context, stackname)
+				can_be_seen = mod.is_visible_to(playercontext, stackname)
 				special_text = ""
 				
 				if can_be_seen then
@@ -68,7 +68,7 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 						for i,recipe in ipairs(itemdef.recipes_ingredient) do
 							if recipe.output ~= nil and recipe.output ~= "" then
 								local outputname = ItemStack(recipe.output):get_name()
-								if not mod.is_group(outputname) and not mod.is_visible_to(context, outputname) then
+								if not mod.is_group(outputname) and not mod.is_visible_to(playercontext, outputname) then
 									unknown_recipe_count = unknown_recipe_count + 1
 								end
 							end
@@ -85,7 +85,7 @@ function mod.get_item_tile(pos_x, pos_y, stack_param, context)
 				local groupmembers = mod.database.groups[groupname].members
 				can_be_seen = false
 				for k,v in pairs(groupmembers) do
-					if mod.is_visible_to(context, k) then
+					if mod.is_visible_to(playercontext, k) then
 						imagename = k
 						can_be_seen = true
 						break
@@ -258,13 +258,19 @@ sfinv.register_page("craft_lookup:page", {
 			)
 		)
 		-- Catalog Navigation
-		table.insert(formspec_table, string.format("dropdown[0,8.1;2,1;search_type_dropdown;%s;%i]", table.concat(mod.gui_search_typedescriptions, ","), playercontext.gui_list_search_type))
-		table.insert(formspec_table, "field[2.2,8.3;2.7,1;search_text;Search:;"..playercontext.gui_list_search_term.."]")
-		table.insert(formspec_table, "image_button[4.5,7.9;1,1;craft_lookup_search.png;search_button;]")
+		table.insert(formspec_table, "field[0.3,8.3;2.3,1.0;search_text;Search:;"..playercontext.gui_list_search_term.."]")
+		table.insert(
+			formspec_table,
+			string.format("dropdown[2.1,8.1;2.0,1.0;search_type_dropdown;%s;%i]", table.concat(mod.gui_search_typedescriptions, ","),
+			playercontext.gui_list_search_type)
+		)
+		table.insert(formspec_table, "button[4.0,8.0;0.8,1.0;search_button;?]")
 		table.insert(formspec_table, "tooltip[search_button;Search / Refresh]")
-		table.insert(formspec_table, "button[5.5,7.9;0.8,1;search_page_prev;<]")
+		table.insert(formspec_table, "button[4.6,8.0;0.8,1.0;clearsearch_button;X]")
+		table.insert(formspec_table, "tooltip[clearsearch_button;Clear Search]")
+		table.insert(formspec_table, "button[5.5,7.9;0.8,1.0;search_page_prev;<]")
 		table.insert(formspec_table, string.format("label[6.3,8.1;%i / %i]", playercontext.gui_list_page, mod.get_page_count(playercontext)))
-		table.insert(formspec_table, "button[7.2,7.9;0.8,1;search_page_next;>]")
+		table.insert(formspec_table, "button[7.2,7.9;0.8,1.0;search_page_next;>]")
 		table.insert(formspec_table, "field_close_on_enter[search_text;false]")
 		
 		return sfinv.make_formspec(player, context, table.concat(formspec_table))
@@ -289,12 +295,12 @@ sfinv.register_page("craft_lookup:page", {
 			elseif fields.search_page_next ~= nil then
 				playercontext.gui_list_page = mod.gui_constrain_page(playercontext.gui_list_page + 1, playercontext)
 			elseif fields.search_button ~= nil or fields.key_enter_field == "search_text" then
-				if fields.search_type_dropdown ~= nil and fields.search_text ~= nil then
-					local searchtype = mod.gui_search_typedescriptions_reverse[fields.search_type_dropdown]
-					if searchtype ~= nil then
-						mod.set_search_filter(fields.search_text or "", searchtype, playercontext, true)
-					end
+				local searchtype = fields.search_type_dropdown ~= nil and mod.gui_search_typedescriptions_reverse[fields.search_type_dropdown] or nil
+				if fields.search_text ~= nil and searchtype ~= nil then
+					mod.set_search_filter(fields.search_text, searchtype, playercontext, true)
 				end
+			elseif fields.clearsearch_button ~= nil then
+				mod.set_search_filter("", 1, playercontext, true)
 			else
 				refreshneeded = false
 				
@@ -318,10 +324,10 @@ sfinv.register_page("craft_lookup:page", {
 								--private.print(playercontext.playername, itemname)
 								break
 							else
-								private.print(playercontext.playername, "Failed to identify tile.")
+								--private.print(playercontext.playername, "Failed to identify tile.")
 							end
 						else
-							private.print(playercontext.playername, "Could not figure out tile name.")
+							--private.print(playercontext.playername, "Could not figure out tile name.")
 						end
 					end
 				end
@@ -331,7 +337,8 @@ sfinv.register_page("craft_lookup:page", {
 				sfinv.set_player_inventory_formspec(player)
 			end
 		end
-		if mod.debug_mode then -- Calls the function body defined above.
+		-- Call the function body defined above.
+		if mod.debug_mode then
 			error_protected_method()
 		else
 			local r, errormsg = pcall(error_protected_method)
