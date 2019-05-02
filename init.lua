@@ -30,11 +30,11 @@ local private = {}
 
 private.modname = "craft_lookup"
 private.modpath = minetest.get_modpath("craft_lookup")
-private.tablelib = loadfile(private.modpath.."/tablelib.lua")()
+private.tablelib = loadfile(private.modpath .. "/tablelib.lua")()
 
 mod.progressive_mode = minetest.setting_getbool("craft_lookup_progressive") == true
 mod.debug_mode = minetest.setting_getbool("craft_lookup_debug_mode") == true
-mod.discovery_datafilepath = minetest.get_worldpath().."/craft_lookup_discovery"
+mod.discovery_datafilepath = minetest.get_worldpath() .. "/craft_lookup_discovery"
 mod.discovery_version = 0
 mod.discovery_check_interval = 2
 mod.discovery_save_interval = 120
@@ -43,10 +43,10 @@ mod.gui_search_list_count = mod.gui_search_list_dimensions.x * mod.gui_search_li
 mod.gui_search_typedescriptions = {"All", "Nodes", "Tools", "Craft Items", "Inventory"}
 mod.gui_search_typedescriptions_reverse = private.tablelib.inverse(mod.gui_search_typedescriptions)
 
-loadfile(private.modpath.."/backend.lua")(mod, private)
+loadfile(private.modpath .. "/backend.lua")(mod, private)
 if mod.progressive_mode then
-	loadfile(private.modpath.."/discoverybackend.lua")(mod, private)
+	loadfile(private.modpath .. "/discoverybackend.lua")(mod, private)
 end
-loadfile(private.modpath.."/gui.lua")(mod, private)
+loadfile(private.modpath .. "/gui.lua")(mod, private)
 
 _G.craft_lookup = mod

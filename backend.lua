@@ -6,7 +6,7 @@ local tablelib = private.tablelib
 
 -- Variables
 mod.contexts = {} -- Information the mod uses to track players. Contexts accessed by player's name.
-mod.database = nil -- Table containing navigation information of items.
+mod.database = nil -- Table containing navigation information of items and crafting recipes.
 
 function private.print(playername, msg)
 	minetest.chat_send_player(playername, "[craft_lookup] "..tostring(msg))
@@ -118,7 +118,7 @@ function mod.catalog_items()
 		end
 		
 		-- Clean up unfinished item defs.
-		for k, v in pairs(table.copy(itemlist)) do
+		for k, v in pairs(itemlist) do
 			if v.not_complete then
 				itemlist[k] = nil
 			end
@@ -128,8 +128,10 @@ function mod.catalog_items()
 	end
 end
 function mod.is_group(itemstring)
+	assert(type(itemstring) == "string")
+	
 	local r, r2 = false, nil
-	if string.sub(assert(itemstring),1,6) == "group:" then
+	if string.sub(itemstring, 1, 6) == "group:" then
 		r, r2 = true, string.sub(assert(itemstring), 7)
 	end
 	return r, r2
