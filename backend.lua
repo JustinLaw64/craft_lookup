@@ -9,6 +9,9 @@ mod.contexts = {} -- Information the mod uses to track players. Contexts accesse
 mod.database = nil -- Table containing navigation information of items and crafting recipes.
 
 function private.print(playername, msg)
+	assert(type(playername) == "string")
+	assert(type(msg) == "string")
+	
 	minetest.chat_send_player(playername, "[craft_lookup] "..tostring(msg))
 end
 
